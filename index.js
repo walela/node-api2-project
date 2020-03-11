@@ -91,19 +91,32 @@ app.post('/api/posts', async (req, res) => {
 })
 
 app.post('/api/posts/:id/comments', async (req, res) => {
-  const newPost = req.body
-  const validPost = validatePost(newPost, res)
+  const { id } = req.params
+  const comment = req.body
 
-  if (validPost) {
-    try {
-      const { id } = await db.insert(newPost)
-      const createdPost = await db.findById(id)
-      res.status(201).json(createdPost)
-    } catch (err) {
-      res.status(500).json({
-        errorMessage: 'There was an error while saving the post to the database'
-      })
+  try {
+    const post = await db.findById(id)
+    if (post.length === 0) {
+      res
+        .status(404)
+        .json({ message: `The post with the id ${id} does not exist.` })
+        .end()
+    } else {
+      if (!comment.text) {
+        res
+          .status(400)
+          .json({ errorMessage: 'Please provide text for the comment.' })
+          .end()
+      } else {
+        const { id } = db.insertComment(comment)
+        const createdComment = await db.findCommentById(id)
+        res.status(201).json(createdComment)
+      }
     }
+  } catch (err) {
+    res.status(500).json({
+      error: 'There was an error while saving the comment to the database'
+    })
   }
 })
 
