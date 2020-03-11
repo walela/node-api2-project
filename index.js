@@ -18,7 +18,7 @@ const validatePost = (post, res) => {
   return true
 }
 
-app.get('/', (req, res) => {
+app.get('/', (_, res) => {
   res.send('Hey')
 })
 
@@ -38,10 +38,13 @@ app.get('/api/posts/:id', async (req, res) => {
 
   try {
     const post = await db.findById(id)
-    if (!post) {
+    if (post.length === 0) {
       res.status(404).json({ message: `No post with id ${id} found` })
     }
-    res.status(200).json(post)
+    res
+      .status(200)
+      .json(post)
+      .end()
   } catch (err) {
     res
       .status(500)
@@ -49,7 +52,26 @@ app.get('/api/posts/:id', async (req, res) => {
   }
 })
 
+app.get('/api/posts/:id/comments', async (req, res) => {
+  const { id } = req.params
 
+  try {
+    const post = await db.findById(id)
+    if (post.length === 0) {
+      res
+        .status(404)
+        .json({ message: `No post with id ${id} found` })
+        .end()
+    } else {
+      const comments = await db.findPostComments(id)
+      res.status(200).json(comments)
+    }
+  } catch (err) {
+    res
+      .status(500)
+      .json({ error: 'The comments information could not be retrieved.' })
+  }
+})
 
 app.post('/api/posts', async (req, res) => {
   const newPost = req.body
@@ -69,22 +91,21 @@ app.post('/api/posts', async (req, res) => {
 })
 
 app.post('/api/posts/:id/comments', async (req, res) => {
-    const newPost = req.body
-    const validPost = validatePost(newPost, res)
-  
-    if (validPost) {
-      try {
-        const { id } = await db.insert(newPost)
-        const createdPost = await db.findById(id)
-        res.status(201).json(createdPost)
-      } catch (err) {
-        res.status(500).json({
-          errorMessage: 'There was an error while saving the post to the database'
-        })
-      }
+  const newPost = req.body
+  const validPost = validatePost(newPost, res)
+
+  if (validPost) {
+    try {
+      const { id } = await db.insert(newPost)
+      const createdPost = await db.findById(id)
+      res.status(201).json(createdPost)
+    } catch (err) {
+      res.status(500).json({
+        errorMessage: 'There was an error while saving the post to the database'
+      })
     }
-  })
-  
+  }
+})
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`)
