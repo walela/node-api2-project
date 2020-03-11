@@ -101,22 +101,66 @@ app.post('/api/posts/:id/comments', async (req, res) => {
         .status(404)
         .json({ message: `The post with the id ${id} does not exist.` })
         .end()
+    }
+    if (!comment.text) {
+      res
+        .status(400)
+        .json({ errorMessage: 'Please provide text for the comment.' })
+        .end()
     } else {
-      if (!comment.text) {
-        res
-          .status(400)
-          .json({ errorMessage: 'Please provide text for the comment.' })
-          .end()
-      } else {
-        const { id } = db.insertComment(comment)
-        const createdComment = await db.findCommentById(id)
-        res.status(201).json(createdComment)
-      }
+      const commentId = await db.insertComment(comment)
+      const createdComment = await db.findCommentById(commentId.id)
+      res.status(201).json(createdComment)
     }
   } catch (err) {
+    console.error(err)
     res.status(500).json({
       error: 'There was an error while saving the comment to the database'
     })
+  }
+})
+
+app.delete('/api/posts/:id', async (req, res) => {
+  const { id } = req.params
+
+  try {
+    const post = await db.findById(id)
+    if (post.length === 0) {
+      res
+        .status(404)
+        .json({ message: `The post with id ${id} does not exist` })
+        .end()
+    }
+    res.status(200).json(post)
+    await db.remove(id)
+  } catch (err) {
+    res.status(500).json({ errorMessage: 'The post could not be removed' })
+  }
+})
+
+app.put('/api/posts/:id', async (req, res) => {
+  const { id } = req.params
+  const update = req.body
+
+  const post = await db.findById(id)
+  if (post.length === 0) {
+    res
+      .status(404)
+      .json({ message: `The post with id ${id} does not exist` })
+      .end()
+  }
+
+  const validPost = validatePost(update, res)
+  if (validUpdate) {
+    try {
+      await db.update(id, update)
+      const updatedPost = await db.findById(id)
+      res.status(200).json(updatedPost)
+    } catch (err) {
+      res
+        .status(500)
+        .json({ errorMessage: 'The post information could not be modified.' })
+    }
   }
 })
 
